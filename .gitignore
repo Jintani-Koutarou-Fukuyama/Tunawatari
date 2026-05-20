@@ -116,3 +116,14 @@ PlayerTest/*.csproj
 PlayerTest/*.sln
 PlayerTest/*.slnx
 
+
+# Unity project nested under Tunawatari Game
+Tunawatari Game/[Ll]ibrary/
+Tunawatari Game/[Tt]emp/
+Tunawatari Game/[Oo]bj/
+Tunawatari Game/[Ll]ogs/
+Tunawatari Game/[Uu]ser[Ss]ettings/
+Tunawatari Game/.vs/
+Tunawatari Game/*.csproj
+Tunawatari Game/*.sln
+Tunawatari Game/*.slnx
