@@ -33,7 +33,7 @@ AnimatorState:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: catwalk
-  m_Speed: 0.5
+  m_Speed: 0.4
   m_CycleOffset: 0
   m_Transitions:
   - {fileID: -7690225716484669173}
@@ -47,7 +47,7 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: -203655887218126122, guid: 3b4f27bb6bd4421479b00e91abf31d80, type: 3}
+  m_Motion: {fileID: -203655887218126122, guid: 9583f52fe7725e14cb93f5c42ed23332, type: 3}
   m_Tag: 
   m_SpeedParameter: 
   m_MirrorParameter: 
@@ -184,7 +184,7 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: -203655887218126122, guid: 8be9e37aac0b1b547a84e34a82cf1481, type: 3}
+  m_Motion: {fileID: -203655887218126122, guid: 1f293aaf40161ea41aea46e4b0f38d88, type: 3}
   m_Tag: 
   m_SpeedParameter: 
   m_MirrorParameter: 
@@ -267,7 +267,7 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: -203655887218126122, guid: 817abc30f84880c47b31a66f51aa6f59, type: 3}
+  m_Motion: {fileID: -203655887218126122, guid: 26e0ff561eb76a7439593a1d06dc49dd, type: 3}
   m_Tag: 
   m_SpeedParameter: 
   m_MirrorParameter: 
