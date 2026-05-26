@@ -17,10 +17,59 @@ public class BalanceManager : MonoBehaviour
     {
     }
 
+    private struct RectTransformLayout
+    {
+        public Vector2 anchorMin;
+        public Vector2 anchorMax;
+        public Vector2 pivot;
+        public Vector2 anchoredPosition;
+        public Vector2 sizeDelta;
+        public Vector3 localScale;
+        public Quaternion localRotation;
+
+        public RectTransformLayout(RectTransform rectTransform)
+        {
+            anchorMin = rectTransform.anchorMin;
+            anchorMax = rectTransform.anchorMax;
+            pivot = rectTransform.pivot;
+            anchoredPosition = rectTransform.anchoredPosition;
+            sizeDelta = rectTransform.sizeDelta;
+            localScale = rectTransform.localScale;
+            localRotation = rectTransform.localRotation;
+        }
+
+        public void ApplyTo(RectTransform rectTransform)
+        {
+            rectTransform.anchorMin = anchorMin;
+            rectTransform.anchorMax = anchorMax;
+            rectTransform.pivot = pivot;
+            rectTransform.anchoredPosition = anchoredPosition;
+            rectTransform.sizeDelta = sizeDelta;
+            rectTransform.localScale = localScale;
+            rectTransform.localRotation = localRotation;
+        }
+    }
+
     [Header("UI")]
+    [SerializeField] private RectTransform gaugeRoot;
     [SerializeField] private RectTransform balanceBar;
     [SerializeField] private RectTransform targetZone;
     [SerializeField] private RectTransform balancePoint;
+
+    [Header("Event Vertical Layout")]
+    // イベント中にゲージ全体を画面左端へ置くための設定です。
+    // Canvasの左中央に寄せたいので、anchor/pivotの初期値を左中央にしています。
+    [SerializeField] private Vector2 eventVerticalAnchorMin = new Vector2(0f, 0.5f);
+    [SerializeField] private Vector2 eventVerticalAnchorMax = new Vector2(0f, 0.5f);
+    [SerializeField] private Vector2 eventVerticalPivot = new Vector2(0f, 0.5f);
+    [SerializeField] private Vector2 eventVerticalAnchoredPosition = new Vector2(40f, 0f);
+    // 縦表示時のBalanceBarの大きさです。xが太さ、yが長さです。
+    [SerializeField] private Vector2 eventVerticalBarSize = new Vector2(28f, 240f);
+    // 縦表示時のTargetZoneの大きさです。xが幅、yが縦方向の判定範囲です。
+    [SerializeField] private Vector2 eventVerticalTargetZoneSize = new Vector2(44f, 50f);
+    // 縦表示時のBalancePointの大きさです。白い球を正方形で扱います。
+    [SerializeField] private Vector2 eventVerticalPointSize = new Vector2(28f, 28f);
+    [SerializeField] private bool resetGaugePositionOnLayoutSwitch = true;
 
     [Header("Gauge Direction")]
     [SerializeField] private BalanceGaugeDirection gaugeDirection = BalanceGaugeDirection.Horizontal;
@@ -80,6 +129,11 @@ public class BalanceManager : MonoBehaviour
     private bool wasInsideTarget;
     private Coroutine unbalanceCoroutine;
     private float nextTimerLogTime;
+    private bool hasSavedHorizontalLayout;
+    private RectTransformLayout savedGaugeRootLayout;
+    private RectTransformLayout savedBalanceBarLayout;
+    private RectTransformLayout savedTargetZoneLayout;
+    private RectTransformLayout savedBalancePointLayout;
 
     public bool IsInsideTarget { get; private set; }
     public float OutsideTimer => outsideTimer;
@@ -87,6 +141,13 @@ public class BalanceManager : MonoBehaviour
 
     private void Start()
     {
+        if (gaugeRoot == null && balanceBar != null)
+        {
+            gaugeRoot = balanceBar.parent as RectTransform;
+        }
+
+        SaveHorizontalLayoutIfNeeded();
+
         // UIの初期位置を現在のInspector配置から読み取ります。
         pointAxisPosition = GetAxisAnchoredPosition(balancePoint);
         targetAxisPosition = GetAxisAnchoredPosition(targetZone);
@@ -141,6 +202,46 @@ public class BalanceManager : MonoBehaviour
     public void SetVerticalGauge()
     {
         SetGaugeDirection(BalanceGaugeDirection.Vertical);
+    }
+
+    public void SwitchToEventVerticalLayout()
+    {
+        SaveHorizontalLayoutIfNeeded();
+
+        SetGaugeDirection(BalanceGaugeDirection.Vertical);
+        ApplyEventVerticalLayout();
+
+        if (resetGaugePositionOnLayoutSwitch)
+        {
+            ResetBalance();
+        }
+
+        DebugLog("Balance gauge switched to event vertical layout.");
+    }
+
+    public void SwitchToNormalHorizontalLayout()
+    {
+        RestoreHorizontalLayout();
+        SetGaugeDirection(BalanceGaugeDirection.Horizontal);
+
+        if (resetGaugePositionOnLayoutSwitch)
+        {
+            ResetBalance();
+        }
+
+        DebugLog("Balance gauge restored to normal horizontal layout.");
+    }
+
+    public void SetEventVerticalLayoutActive(bool eventActive)
+    {
+        if (eventActive)
+        {
+            SwitchToEventVerticalLayout();
+        }
+        else
+        {
+            SwitchToNormalHorizontalLayout();
+        }
     }
 
     // ダメージ後やリトライ時にゲージを中央へ戻したい時用。
@@ -371,6 +472,95 @@ public class BalanceManager : MonoBehaviour
         SetAxisAnchoredPosition(targetZone, targetAxisPosition);
     }
 
+    private void SaveHorizontalLayoutIfNeeded()
+    {
+        if (hasSavedHorizontalLayout)
+        {
+            return;
+        }
+
+        if (gaugeRoot != null)
+        {
+            savedGaugeRootLayout = new RectTransformLayout(gaugeRoot);
+        }
+
+        if (balanceBar != null)
+        {
+            savedBalanceBarLayout = new RectTransformLayout(balanceBar);
+        }
+
+        if (targetZone != null)
+        {
+            savedTargetZoneLayout = new RectTransformLayout(targetZone);
+        }
+
+        if (balancePoint != null)
+        {
+            savedBalancePointLayout = new RectTransformLayout(balancePoint);
+        }
+
+        hasSavedHorizontalLayout = true;
+    }
+
+    private void ApplyEventVerticalLayout()
+    {
+        RectTransform root = gaugeRoot != null ? gaugeRoot : balanceBar;
+        if (root != null)
+        {
+            root.anchorMin = eventVerticalAnchorMin;
+            root.anchorMax = eventVerticalAnchorMax;
+            root.pivot = eventVerticalPivot;
+            root.anchoredPosition = eventVerticalAnchoredPosition;
+            root.localRotation = Quaternion.identity;
+        }
+
+        if (balanceBar != null)
+        {
+            balanceBar.sizeDelta = eventVerticalBarSize;
+            balanceBar.localRotation = Quaternion.identity;
+        }
+
+        if (targetZone != null)
+        {
+            targetZone.sizeDelta = eventVerticalTargetZoneSize;
+            SetCrossAxisAnchoredPosition(targetZone, 0f);
+        }
+
+        if (balancePoint != null)
+        {
+            balancePoint.sizeDelta = eventVerticalPointSize;
+            SetCrossAxisAnchoredPosition(balancePoint, 0f);
+        }
+    }
+
+    private void RestoreHorizontalLayout()
+    {
+        if (!hasSavedHorizontalLayout)
+        {
+            return;
+        }
+
+        if (gaugeRoot != null)
+        {
+            savedGaugeRootLayout.ApplyTo(gaugeRoot);
+        }
+
+        if (balanceBar != null)
+        {
+            savedBalanceBarLayout.ApplyTo(balanceBar);
+        }
+
+        if (targetZone != null)
+        {
+            savedTargetZoneLayout.ApplyTo(targetZone);
+        }
+
+        if (balancePoint != null)
+        {
+            savedBalancePointLayout.ApplyTo(balancePoint);
+        }
+    }
+
     private float GetMinPointPosition()
     {
         return -GetGaugeHalfLength() + GetAxisSize(balancePoint) * 0.5f;
@@ -443,6 +633,27 @@ public class BalanceManager : MonoBehaviour
         else
         {
             anchoredPosition.y = axisPosition;
+        }
+
+        rectTransform.anchoredPosition = anchoredPosition;
+    }
+
+    private void SetCrossAxisAnchoredPosition(RectTransform rectTransform, float crossAxisPosition)
+    {
+        if (rectTransform == null)
+        {
+            return;
+        }
+
+        Vector2 anchoredPosition = rectTransform.anchoredPosition;
+
+        if (gaugeDirection == BalanceGaugeDirection.Horizontal)
+        {
+            anchoredPosition.y = crossAxisPosition;
+        }
+        else
+        {
+            anchoredPosition.x = crossAxisPosition;
         }
 
         rectTransform.anchoredPosition = anchoredPosition;
