@@ -75,6 +75,8 @@ public class SniperEventManager : MonoBehaviour
     [SerializeField] private bool startBulletSequenceOnDefense = true;
     // trueならイベント終了時に弾発射シーケンスを止めます。
     [SerializeField] private bool stopBulletSequenceOnEventEnd = true;
+    // trueならMatrixAvoid Stateでも弾発射シーケンスを開始します。
+    [SerializeField] private bool startBulletSequenceOnMatrixAvoid = true;
 
     [Header("Stick Break")]
     // 4発防御後の棒破壊演出を管理するスクリプトです。
@@ -85,6 +87,25 @@ public class SniperEventManager : MonoBehaviour
     [SerializeField] private bool moveToStickBreakAfterRequiredGuards = true;
     // trueならStickBreak Stateに入った時に棒破壊演出を自動再生します。
     [SerializeField] private bool playStickBreakOnStickBreakState = true;
+
+    [Header("Matrix Avoid")]
+    // 棒破壊後のマトリックス風回避フェーズを管理するスクリプトです。
+    [SerializeField] private SniperMatrixAvoidController matrixAvoidController;
+    // trueならMatrixAvoid Stateに入った時に回避フェーズを開始します。
+    [SerializeField] private bool startMatrixAvoidOnMatrixAvoidState = true;
+    // trueなら全弾回避成功時にイベントを終了します。
+    [SerializeField] private bool endEventOnMatrixAvoidSuccess = true;
+    // trueなら1発でも当たって失敗した時にイベントを終了します。
+    [SerializeField] private bool endEventOnMatrixAvoidFail = true;
+
+    [Header("Screen Fade")]
+    // イベント用の暗転演出です。
+    // 黒Imageを少しだけ表示して、完全暗転ではない映画っぽい暗さにします。
+    [SerializeField] private EventScreenFadeController screenFadeController;
+    // trueならイベント開始時に少し暗くします。
+    [SerializeField] private bool fadeInOnEventStart = true;
+    // trueならイベント終了時に明るく戻します。
+    [SerializeField] private bool fadeOutOnEventEnd = true;
 
     [Header("Balance Gauge")]
     // イベント中だけ縦表示へ切り替えるBalanceManagerです。
@@ -101,6 +122,8 @@ public class SniperEventManager : MonoBehaviour
     [SerializeField] private UnityEvent onStickBreak;
     [SerializeField] private UnityEvent onSlowMotion;
     [SerializeField] private UnityEvent onMatrixAvoid;
+    [SerializeField] private UnityEvent onMatrixAvoidSucceeded;
+    [SerializeField] private UnityEvent onMatrixAvoidFailed;
     [SerializeField] private UnityEvent onBulletGuarded;
     [SerializeField] private SniperBulletEvent onBulletGuardedWithBullet;
     [SerializeField] private UnityEvent onRequiredBulletsGuarded;
@@ -200,6 +223,11 @@ public class SniperEventManager : MonoBehaviour
             stickBreakController.ResetStickVisual();
         }
 
+        if (fadeInOnEventStart)
+        {
+            FadeInEventScreen();
+        }
+
         Log($"Event started. State = {currentState}");
         onEventStarted?.Invoke();
         EnterState(currentState);
@@ -267,9 +295,16 @@ public class SniperEventManager : MonoBehaviour
             StopSniperBulletSequence();
         }
 
+        StopMatrixAvoidPhase();
+
         if (switchBalanceGaugeDuringEvent && balanceManager != null)
         {
             balanceManager.SwitchToNormalHorizontalLayout();
+        }
+
+        if (fadeOutOnEventEnd)
+        {
+            FadeOutEventScreen();
         }
 
         Log("Event ended.");
@@ -321,6 +356,16 @@ public class SniperEventManager : MonoBehaviour
                 onSlowMotion?.Invoke();
                 break;
             case SniperEventState.MatrixAvoid:
+                if (startBulletSequenceOnMatrixAvoid)
+                {
+                    StartSniperBulletSequence();
+                }
+
+                if (startMatrixAvoidOnMatrixAvoidState)
+                {
+                    StartMatrixAvoidPhase();
+                }
+
                 onMatrixAvoid?.Invoke();
                 break;
             case SniperEventState.End:
@@ -383,6 +428,27 @@ public class SniperEventManager : MonoBehaviour
         bulletShooter.StopFireSequence();
     }
 
+    public void StartMatrixAvoidPhase()
+    {
+        if (matrixAvoidController == null)
+        {
+            Log("StartMatrixAvoidPhase was ignored because matrixAvoidController is not assigned.");
+            return;
+        }
+
+        matrixAvoidController.StartPhase();
+    }
+
+    public void StopMatrixAvoidPhase()
+    {
+        if (matrixAvoidController == null)
+        {
+            return;
+        }
+
+        matrixAvoidController.StopPhase();
+    }
+
     public void NotifySniperBulletGuarded(SniperBullet bullet)
     {
         guardedBulletCount++;
@@ -425,6 +491,54 @@ public class SniperEventManager : MonoBehaviour
         }
 
         stickBreakController.PlayBreakSequence();
+    }
+
+    public void NotifyMatrixAvoidSucceeded()
+    {
+        Log("Matrix avoid succeeded.");
+        onMatrixAvoidSucceeded?.Invoke();
+
+        if (endEventOnMatrixAvoidSuccess)
+        {
+            SetState(SniperEventState.End);
+        }
+    }
+
+    public void NotifyMatrixAvoidFailed()
+    {
+        Log("Matrix avoid failed.");
+        onMatrixAvoidFailed?.Invoke();
+
+        if (endEventOnMatrixAvoidFail)
+        {
+            SetState(SniperEventState.End);
+        }
+    }
+
+    public void GoToMatrixAvoidState()
+    {
+        SetState(SniperEventState.MatrixAvoid);
+    }
+
+    public void FadeInEventScreen()
+    {
+        if (screenFadeController == null)
+        {
+            Log("FadeInEventScreen was ignored because screenFadeController is not assigned.");
+            return;
+        }
+
+        screenFadeController.FadeIn();
+    }
+
+    public void FadeOutEventScreen()
+    {
+        if (screenFadeController == null)
+        {
+            return;
+        }
+
+        screenFadeController.FadeOut();
     }
 
     private void UpdateWarning()
