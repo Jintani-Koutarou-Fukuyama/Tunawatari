@@ -3935,11 +3935,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b20e13dd3fc54d08beec94f312c2f5b9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  eventManager: {fileID: 0}
-  cameraTransform: {fileID: 0}
-  targetCamera: {fileID: 0}
-  lookTarget: {fileID: 0}
-  centerOfGravityTransform: {fileID: 0}
+  eventManager: {fileID: 1736381833}
+  cameraTransform: {fileID: 1599052643}
+  targetCamera: {fileID: 1599052642}
+  lookTarget: {fileID: 665179174}
+  centerOfGravityTransform: {fileID: 2137616137}
   moveCameraDuration: 1.2
   sideDistance: 5.5
   backDistance: 2
@@ -5174,17 +5174,15 @@ RectTransform:
   m_GameObject: {fileID: 529686859}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 8, y: 0.4, z: 0}
+  m_LocalScale: {x: 1.4, y: 0.4, z: 0}
   m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 713676773}
-  - {fileID: 760942542}
+  m_Children: []
   m_Father: {fileID: 1515038813}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: -160}
-  m_SizeDelta: {x: 100, y: 100}
+  m_SizeDelta: {x: 600, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &529686861
 MonoBehaviour:
@@ -6810,6 +6808,7 @@ Transform:
   - {fileID: 567915864}
   - {fileID: 1018097754}
   - {fileID: 113162955}
+  - {fileID: 2137616137}
   m_Father: {fileID: 2019293630}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &665772766
@@ -7418,16 +7417,16 @@ RectTransform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 713676772}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 8, y: 0.4, z: 0}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 529686860}
+  m_Father: {fileID: 1515038813}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: -160}
   m_SizeDelta: {x: 20, y: 90}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &713676774
@@ -8210,16 +8209,16 @@ RectTransform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 760942541}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 8, y: 0.4, z: 0}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 529686860}
+  m_Father: {fileID: 1515038813}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: -160}
   m_SizeDelta: {x: 5, y: 90}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &760942543
@@ -10699,7 +10698,19 @@ MonoBehaviour:
       m_Calls: []
   onBroken:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 1736381833}
+        m_TargetAssemblyTypeName: SniperEventManager, Assembly-CSharp
+        m_MethodName: GoToMatrixAvoidState
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
   debugLog: 1
 --- !u!4 &946074980
 Transform:
@@ -11122,6 +11133,7 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 220338148}
+  - {fileID: 1515038813}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -12677,10 +12689,10 @@ MonoBehaviour:
   cameraTransform: {fileID: 1599052643}
   targetCamera: {fileID: 1599052642}
   lookTarget: {fileID: 665179174}
-  lookHeight: 1.4
-  sideDistance: 6
-  height: 2.2
-  backwardOffset: -0.8
+  lookHeight: 0
+  sideDistance: 1.5
+  height: 0
+  backwardOffset: 0
   useRightSide: 1
   moveToSideDuration: 2.5
   returnDuration: 1.5
@@ -14160,20 +14172,34 @@ MonoBehaviour:
   balancePoint: {fileID: 760942542}
   eventVerticalAnchorMin: {x: 0, y: 0.5}
   eventVerticalAnchorMax: {x: 0, y: 0.5}
-  eventVerticalPivot: {x: 0, y: 0.5}
-  eventVerticalAnchoredPosition: {x: 120, y: 0}
-  eventVerticalBarSize: {x: 40, y: 500}
-  eventVerticalTargetZoneSize: {x: 44, y: 50}
-  eventVerticalPointSize: {x: 28, y: 28}
+  eventVerticalPivot: {x: 0.5, y: 0.5}
+  eventVerticalAnchoredPosition: {x: 70, y: 0}
+  eventVerticalRotationZ: 90
   resetGaugePositionOnLayoutSwitch: 1
   gaugeDirection: 0
-  pointMoveSpeed: 20
-  negativeKey: 276
-  positiveKey: 275
+  playMode: 0
+  pointMoveSpeed: 160
+  negativeKey: 274
+  positiveKey: 273
   returnPointToCenter: 0
   pointReturnSpeed: 80
   targetMoveSpeed: 20
   targetMoveRangeRate: 0.85
+  useRandomTargetChallenge: 1
+  challengeTimeLimit: 3
+  randomizeTargetAfterSuccess: 1
+  randomizeTargetAfterFailure: 1
+  randomTargetMinDistanceFromPoint: 30
+  balanceTimerText: {fileID: 0}
+  balanceTimerTmpText: {fileID: 0}
+  timerFormat: '{0:0.0}'
+  sniperDefenseStickTarget: {fileID: 1973266943}
+  sniperDefenseStickMoveRange: 0.5
+  sniperDefenseDownKey: 274
+  sniperDefenseUpKey: 273
+  matrixPointRiseSpeed: 80
+  matrixDownPushSpeed: 140
+  matrixDownKey: 274
   failTimeLimit: 1.5
   damageAmount: 1
   resetPointAfterDamage: 1
@@ -15962,6 +15988,7 @@ MonoBehaviour:
   laserController: {fileID: 615380721}
   bulletPrefab: {fileID: 2086261179823682334, guid: 1471e98bb0946d847a15230e4b8cb13c, type: 3}
   aimTargetOverride: {fileID: 665179174}
+  balanceManager: {fileID: 1311752719}
   totalShots: 4
   bulletSpeed: 4
   bulletLifeTime: 6
@@ -16246,9 +16273,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1515038813}
-  - component: {fileID: 1515038816}
-  - component: {fileID: 1515038815}
-  - component: {fileID: 1515038814}
   m_Layer: 5
   m_Name: BalanceGauge
   m_TagString: Untagged
@@ -16263,82 +16287,21 @@ RectTransform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1515038812}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 0.4, y: 0.4, z: 0}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 529686860}
-  m_Father: {fileID: 0}
+  - {fileID: 713676773}
+  - {fileID: 760942542}
+  m_Father: {fileID: 1045215482}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
-  m_Pivot: {x: 0, y: 0}
---- !u!114 &1515038814
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1515038812}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: dc42784cf147c0c48a680349fa168899, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  m_IgnoreReversedGraphics: 1
-  m_BlockingObjects: 0
-  m_BlockingMask:
-    serializedVersion: 2
-    m_Bits: 4294967295
---- !u!114 &1515038815
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1515038812}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0cd44c1031e13a943bb63640046fad76, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  m_UiScaleMode: 0
-  m_ReferencePixelsPerUnit: 100
-  m_ScaleFactor: 1
-  m_ReferenceResolution: {x: 800, y: 600}
-  m_ScreenMatchMode: 0
-  m_MatchWidthOrHeight: 0
-  m_PhysicalUnit: 3
-  m_FallbackScreenDPI: 96
-  m_DefaultSpriteDPI: 96
-  m_DynamicPixelsPerUnit: 1
-  m_PresetInfoIsWorld: 0
---- !u!223 &1515038816
-Canvas:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1515038812}
-  m_Enabled: 1
-  serializedVersion: 3
-  m_RenderMode: 0
-  m_Camera: {fileID: 0}
-  m_PlaneDistance: 100
-  m_PixelPerfect: 0
-  m_ReceivesEvents: 1
-  m_OverrideSorting: 0
-  m_OverridePixelPerfect: 0
-  m_SortingBucketNormalizedSize: 0
-  m_VertexColorAlwaysGammaSpace: 0
-  m_AdditionalShaderChannelsFlag: 0
-  m_UpdateRectTransformForStandalone: 0
-  m_SortingLayerID: 0
-  m_SortingOrder: 0
-  m_TargetDisplay: 0
+  m_AnchoredPosition: {x: 452.875, y: 189.12498}
+  m_SizeDelta: {x: 600, y: 200}
+  m_Pivot: {x: 0.5, y: 0.5}
 --- !u!54 &1515380854 stripped
 Rigidbody:
   m_CorrespondingSourceObject: {fileID: 9026883585941259984, guid: 5ec5a4149c4f65a468914f6ccb1abf16, type: 3}
@@ -19205,13 +19168,26 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   startState: 0
-  startOnAwake: 0
+  startOnAwake: 1
   debugLog: 1
+  autoProgressStates: 1
+  autoProgressUseUnscaledTime: 1
+  warningDuration: 3
+  paperDuration: 3
+  sideViewDuration: 5
+  defenseDuration: 8
+  stickBreakDuration: 2
+  slowMotionDuration: 1
+  matrixAvoidDuration: 5
   disablePlayerControlDuringEvent: 1
-  movementBehaviours:
-  - {fileID: 2019293627}
+  movementBehaviours: []
   forwardMoveBehaviours: []
-  normalCameraBehaviours: []
+  normalCameraBehaviours:
+  - {fileID: 1808142947}
+  thirdPersonCameraFollowBehaviours:
+  - {fileID: 1599052644}
+  cinemachineBrainBehaviours:
+  - {fileID: 1599052645}
   balanceBehaviours:
   - {fileID: 1311752719}
   sideViewCameraController: {fileID: 1169325506}
@@ -19229,14 +19205,14 @@ MonoBehaviour:
   requiredGuardCountToBreakStick: 4
   moveToStickBreakAfterRequiredGuards: 1
   playStickBreakOnStickBreakState: 1
-  matrixAvoidController: {fileID: 0}
+  matrixAvoidController: {fileID: 423017507}
   startMatrixAvoidOnMatrixAvoidState: 1
   endEventOnMatrixAvoidSuccess: 1
   endEventOnMatrixAvoidFail: 1
   screenFadeController: {fileID: 791029040}
   fadeInOnEventStart: 1
   fadeOutOnEventEnd: 1
-  balanceManager: {fileID: 0}
+  balanceManager: {fileID: 1311752719}
   switchBalanceGaugeDuringEvent: 1
   onEventStarted:
     m_PersistentCalls:
@@ -19981,6 +19957,17 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: bc3490d43bb045048b55d2edd5573a55, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &1808142947 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 6523087148022014041, guid: 5ee0d8660da4ff94c90727c228704266, type: 3}
+  m_PrefabInstance: {fileID: 1037697243}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8b3b191fedf442949b23a4812a511d00, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
 --- !u!54 &1812328272 stripped
@@ -22091,6 +22078,12 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 3efa18409f3a284408c9f34da9b2cecb, type: 3}
       insertIndex: -1
       addedObject: {fileID: 2019293631}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 3efa18409f3a284408c9f34da9b2cecb, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2019293633}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 3efa18409f3a284408c9f34da9b2cecb, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2019293632}
   m_SourcePrefab: {fileID: 100100000, guid: 3efa18409f3a284408c9f34da9b2cecb, type: 3}
 --- !u!1 &2019293626 stripped
 GameObject:
@@ -22162,6 +22155,43 @@ MonoBehaviour:
   animator: {fileID: 2019293627}
   walkBoolName: catwalk
   updateWalkBool: 1
+--- !u!114 &2019293632
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2019293626}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e3870329b31f4df9bf273c4e5f467847, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  matrixAvoidController: {fileID: 423017507}
+  debugLog: 1
+--- !u!136 &2019293633
+CapsuleCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2019293626}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Radius: 0.25
+  m_Height: 2
+  m_Direction: 1
+  m_Center: {x: 0, y: 0.9, z: 0}
 --- !u!1001 &2028631461
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -23828,6 +23858,37 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bc3490d43bb045048b55d2edd5573a55, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!1 &2137616136
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2137616137}
+  m_Layer: 0
+  m_Name: MatrixCenterOfGravity
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2137616137
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2137616136}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: -0.373, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 665179174}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2144432026
 GameObject:
   m_ObjectHideFlags: 0
@@ -24249,7 +24310,6 @@ SceneRoots:
   - {fileID: 350033996}
   - {fileID: 391783092}
   - {fileID: 98741599}
-  - {fileID: 1515038813}
   - {fileID: 798879496}
   - {fileID: 1311752720}
   - {fileID: 1340627299}

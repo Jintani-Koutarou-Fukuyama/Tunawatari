@@ -1,3 +1,5 @@
+using System.Collections;
+using Unity.Cinemachine;
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -32,6 +34,26 @@ public class SniperEventManager : MonoBehaviour
     [SerializeField] private bool startOnAwake;
     [SerializeField] private bool debugLog = true;
 
+    [Header("Auto Progress")]
+    // trueにすると、UnityEventが空でもStateを自動で次へ進めます。
+    [SerializeField] private bool autoProgressStates = true;
+    // trueならTime.timeScaleの影響を受けずに自動進行タイマーが進みます。
+    [SerializeField] private bool autoProgressUseUnscaledTime = true;
+    // WarningからPaperへ進むまでの待ち時間です。
+    [SerializeField] private float warningDuration = 1.5f;
+    // PaperからSideViewへ進むまでの待ち時間です。
+    [SerializeField] private float paperDuration = 1.5f;
+    // SideViewからDefenseへ進むまでの待ち時間です。
+    [SerializeField] private float sideViewDuration = 2.5f;
+    // DefenseからStickBreakへ進むまでの待ち時間です。
+    [SerializeField] private float defenseDuration = 4f;
+    // StickBreakからSlowMotionへ進むまでの待ち時間です。
+    [SerializeField] private float stickBreakDuration = 1.5f;
+    // SlowMotionからMatrixAvoidへ進むまでの待ち時間です。
+    [SerializeField] private float slowMotionDuration = 1f;
+    // MatrixAvoidからEndへ進むまでの待ち時間です。
+    [SerializeField] private float matrixAvoidDuration = 5f;
+
     [Header("Player Control")]
     [SerializeField] private bool disablePlayerControlDuringEvent = true;
     // イベント中に止めたい「左右移動」などの通常移動スクリプトを入れます。
@@ -43,6 +65,12 @@ public class SniperEventManager : MonoBehaviour
     // イベント中に止めたい通常カメラ操作を入れます。
     // 例: ThirdPersonCameraFollowや手動カメラ操作スクリプト。
     [SerializeField] private Behaviour[] normalCameraBehaviours;
+    // Main Cameraに付いているThirdPersonCameraFollowだけを止めたい時に使います。
+    // Cameraコンポーネントではなく、この専用欄へThirdPersonCameraFollowを直接入れてください。
+    [SerializeField] private ThirdPersonCameraFollow[] thirdPersonCameraFollowBehaviours;
+    // Main Cameraに付いているCinemachineBrainだけを止めたい時に使います。
+    // CinemachineBrainを止めることで、イベント専用カメラ制御と競合しにくくします。
+    [SerializeField] private CinemachineBrain[] cinemachineBrainBehaviours;
     // イベント中も有効にしておきたいバランス操作を入れます。
     // 例: BalanceManager。ここに入れたものはイベント中にtrueへします。
     [SerializeField] private Behaviour[] balanceBehaviours;
@@ -134,9 +162,12 @@ public class SniperEventManager : MonoBehaviour
     private SniperEventState currentState;
     private int guardedBulletCount;
     private bool stickBreakStarted;
+    private Coroutine autoProgressCoroutine;
     private bool[] movementOriginalEnabled;
     private bool[] forwardMoveOriginalEnabled;
     private bool[] normalCameraOriginalEnabled;
+    private bool[] thirdPersonCameraFollowOriginalEnabled;
+    private bool[] cinemachineBrainOriginalEnabled;
     private bool[] balanceOriginalEnabled;
 
     public bool IsEventRunning => isEventRunning;
@@ -202,6 +233,7 @@ public class SniperEventManager : MonoBehaviour
         currentState = startState;
         guardedBulletCount = 0;
         stickBreakStarted = false;
+        CancelAutoProgress();
 
         CacheControlStates();
         SetEventControlLock(true);
@@ -248,6 +280,7 @@ public class SniperEventManager : MonoBehaviour
         }
 
         SniperEventState nextState = (SniperEventState)((int)currentState + 1);
+        Log($"AdvanceState requested. {currentState} -> {nextState}");
         SetState(nextState);
     }
 
@@ -261,12 +294,15 @@ public class SniperEventManager : MonoBehaviour
 
         if (currentState == nextState)
         {
+            Log($"SetState({nextState}) was ignored because it is already the current state.");
             return;
         }
 
+        SniperEventState previousState = currentState;
+        CancelAutoProgress();
         ExitState(currentState, nextState);
         currentState = nextState;
-        Log($"State changed. State = {currentState}");
+        Log($"State changed. {previousState} -> {currentState}");
         EnterState(currentState);
     }
 
@@ -278,6 +314,7 @@ public class SniperEventManager : MonoBehaviour
         }
 
         isEventRunning = false;
+        CancelAutoProgress();
         SetEventControlLock(false);
 
         if (returnCameraOnEnd && sideViewCameraController != null)
@@ -297,6 +334,9 @@ public class SniperEventManager : MonoBehaviour
 
         StopMatrixAvoidPhase();
 
+        DisableBalanceSniperDefenseMode();
+        DisableBalanceMatrixAvoidMode();
+
         if (switchBalanceGaugeDuringEvent && balanceManager != null)
         {
             balanceManager.SwitchToNormalHorizontalLayout();
@@ -313,6 +353,7 @@ public class SniperEventManager : MonoBehaviour
 
     private void EnterState(SniperEventState state)
     {
+        Log($"Enter State = {state}");
         onStateChanged?.Invoke(state);
 
         switch (state)
@@ -337,6 +378,8 @@ public class SniperEventManager : MonoBehaviour
                 onSideView?.Invoke();
                 break;
             case SniperEventState.Defense:
+                EnableBalanceSniperDefenseMode();
+
                 if (startBulletSequenceOnDefense)
                 {
                     StartSniperBulletSequence();
@@ -345,6 +388,8 @@ public class SniperEventManager : MonoBehaviour
                 onDefense?.Invoke();
                 break;
             case SniperEventState.StickBreak:
+                DisableBalanceSniperDefenseMode();
+
                 if (playStickBreakOnStickBreakState)
                 {
                     StartStickBreakSequence();
@@ -356,6 +401,8 @@ public class SniperEventManager : MonoBehaviour
                 onSlowMotion?.Invoke();
                 break;
             case SniperEventState.MatrixAvoid:
+                EnableBalanceMatrixAvoidMode();
+
                 if (startBulletSequenceOnMatrixAvoid)
                 {
                     StartSniperBulletSequence();
@@ -372,10 +419,90 @@ public class SniperEventManager : MonoBehaviour
                 EndEvent();
                 break;
         }
+
+        ScheduleAutoProgress(state);
+    }
+
+    private void ScheduleAutoProgress(SniperEventState state)
+    {
+        if (!autoProgressStates || !isEventRunning || state == SniperEventState.End)
+        {
+            return;
+        }
+
+        float delay = GetAutoProgressDelay(state);
+        Log($"Auto progress scheduled. State = {state}, Delay = {delay:F2}s");
+
+        autoProgressCoroutine = StartCoroutine(AutoProgressRoutine(state, delay));
+    }
+
+    private IEnumerator AutoProgressRoutine(SniperEventState scheduledState, float delay)
+    {
+        if (delay > 0f)
+        {
+            if (autoProgressUseUnscaledTime)
+            {
+                yield return new WaitForSecondsRealtime(delay);
+            }
+            else
+            {
+                yield return new WaitForSeconds(delay);
+            }
+        }
+
+        autoProgressCoroutine = null;
+
+        if (!isEventRunning || currentState != scheduledState)
+        {
+            Log($"Auto progress canceled. Scheduled = {scheduledState}, Current = {currentState}, Running = {isEventRunning}");
+            yield break;
+        }
+
+        Log($"Auto progress advancing from {currentState}.");
+        AdvanceState();
+    }
+
+    private void CancelAutoProgress()
+    {
+        if (autoProgressCoroutine == null)
+        {
+            return;
+        }
+
+        StopCoroutine(autoProgressCoroutine);
+        autoProgressCoroutine = null;
+    }
+
+    private float GetAutoProgressDelay(SniperEventState state)
+    {
+        switch (state)
+        {
+            case SniperEventState.Warning:
+                return warningDuration;
+            case SniperEventState.Paper:
+                return paperDuration;
+            case SniperEventState.SideView:
+                return sideViewDuration;
+            case SniperEventState.Defense:
+                return defenseDuration;
+            case SniperEventState.StickBreak:
+                return stickBreakDuration;
+            case SniperEventState.SlowMotion:
+                return slowMotionDuration;
+            case SniperEventState.MatrixAvoid:
+                return matrixAvoidDuration;
+            default:
+                return 0f;
+        }
     }
 
     private void ExitState(SniperEventState state, SniperEventState nextState)
     {
+        if (state == SniperEventState.Defense)
+        {
+            DisableBalanceSniperDefenseMode();
+        }
+
         if (state == SniperEventState.SideView &&
             nextState != SniperEventState.SideView &&
             hideLaserWhenLeavingSideView)
@@ -384,6 +511,48 @@ public class SniperEventManager : MonoBehaviour
             // SideViewから次のStateへ進むタイミングで消します。
             HideSniperLasers();
         }
+    }
+
+    private void EnableBalanceSniperDefenseMode()
+    {
+        if (balanceManager == null)
+        {
+            Log("EnableBalanceSniperDefenseMode skipped because balanceManager is not assigned.");
+            return;
+        }
+
+        balanceManager.EnableSniperDefenseMode();
+    }
+
+    private void DisableBalanceSniperDefenseMode()
+    {
+        if (balanceManager == null)
+        {
+            return;
+        }
+
+        balanceManager.DisableSniperDefenseMode();
+    }
+
+    private void EnableBalanceMatrixAvoidMode()
+    {
+        if (balanceManager == null)
+        {
+            Log("EnableBalanceMatrixAvoidMode skipped because balanceManager is not assigned.");
+            return;
+        }
+
+        balanceManager.EnableMatrixAvoidMode();
+    }
+
+    private void DisableBalanceMatrixAvoidMode()
+    {
+        if (balanceManager == null)
+        {
+            return;
+        }
+
+        balanceManager.DisableMatrixAvoidMode();
     }
 
     public void ShowSniperLasers()
@@ -604,6 +773,8 @@ public class SniperEventManager : MonoBehaviour
         SetBehavioursEnabled(movementBehaviours, movementOriginalEnabled, !eventActive);
         SetBehavioursEnabled(forwardMoveBehaviours, forwardMoveOriginalEnabled, !eventActive);
         SetBehavioursEnabled(normalCameraBehaviours, normalCameraOriginalEnabled, !eventActive);
+        SetBehavioursEnabled(thirdPersonCameraFollowBehaviours, thirdPersonCameraFollowOriginalEnabled, !eventActive);
+        SetBehavioursEnabled(cinemachineBrainBehaviours, cinemachineBrainOriginalEnabled, !eventActive);
 
         if (eventActive)
         {
@@ -627,6 +798,8 @@ public class SniperEventManager : MonoBehaviour
         movementOriginalEnabled = CacheOriginalEnabled(movementBehaviours);
         forwardMoveOriginalEnabled = CacheOriginalEnabled(forwardMoveBehaviours);
         normalCameraOriginalEnabled = CacheOriginalEnabled(normalCameraBehaviours);
+        thirdPersonCameraFollowOriginalEnabled = CacheOriginalEnabled(thirdPersonCameraFollowBehaviours);
+        cinemachineBrainOriginalEnabled = CacheOriginalEnabled(cinemachineBrainBehaviours);
         balanceOriginalEnabled = CacheOriginalEnabled(balanceBehaviours);
     }
 

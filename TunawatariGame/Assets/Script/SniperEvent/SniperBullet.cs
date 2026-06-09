@@ -29,9 +29,19 @@ public class SniperBullet : MonoBehaviour
     // 左が近い時、右が遠い時で、値が小さいほど遅くなります。
     [SerializeField] private AnimationCurve speedMultiplierCurve = AnimationCurve.EaseInOut(0f, 0.18f, 1f, 1f);
 
+    [Header("Defense Arrival Check")]
+    // Defense中、弾がこのTransformへ近づいたら「プレイヤー付近へ到達した」とみなします。
+    // SniperBulletShooterから、Aim Target OverrideまたはレーザーのTargetPointを渡します。
+    [SerializeField] private Transform defenseArrivalTarget;
+    // 弾とTargetの距離がこの値以下になったら到達判定を行います。
+    // 0.5なら、Targetから半径0.5m以内に入った時に判定します。
+    [SerializeField] private float defenseArrivalDistance = 0.5f;
+
     private Vector3 moveDirection = Vector3.forward;
     private float lifeTimer;
     private bool isDestroyed;
+    private bool hasResolvedDefenseArrival;
+    private BalanceManager balanceManager;
 
     public bool IsDestroyed => isDestroyed;
 
@@ -87,6 +97,7 @@ public class SniperBullet : MonoBehaviour
         speedMultiplierCurve = newSpeedMultiplierCurve;
         lifeTimer = 0f;
         isDestroyed = false;
+        hasResolvedDefenseArrival = false;
 
         if (moveDirection.sqrMagnitude > 0.0001f)
         {
@@ -94,6 +105,13 @@ public class SniperBullet : MonoBehaviour
             // 弾モデルを使う時に、先端が進行方向を向くようにするためです。
             transform.rotation = Quaternion.LookRotation(moveDirection);
         }
+    }
+
+    public void SetDefenseArrivalCheck(BalanceManager newBalanceManager, Transform newDefenseArrivalTarget)
+    {
+        balanceManager = newBalanceManager;
+        defenseArrivalTarget = newDefenseArrivalTarget;
+        hasResolvedDefenseArrival = false;
     }
 
     private void Update()
@@ -110,6 +128,8 @@ public class SniperBullet : MonoBehaviour
 
         transform.position += moveDirection * currentSpeed * deltaTime;
         lifeTimer += deltaTime;
+
+        CheckDefenseArrival();
 
         if (lifeTimer >= lifeTime)
         {
@@ -161,5 +181,28 @@ public class SniperBullet : MonoBehaviour
         }
 
         return multiplier;
+    }
+
+    private void CheckDefenseArrival()
+    {
+        if (hasResolvedDefenseArrival || balanceManager == null || defenseArrivalTarget == null)
+        {
+            return;
+        }
+
+        if (balanceManager.PlayMode != BalanceManager.BalancePlayMode.SniperDefense)
+        {
+            return;
+        }
+
+        float distance = Vector3.Distance(transform.position, defenseArrivalTarget.position);
+        if (distance > defenseArrivalDistance)
+        {
+            return;
+        }
+
+        hasResolvedDefenseArrival = true;
+        balanceManager.ResolveSniperDefenseShot();
+        DestroyBullet();
     }
 }

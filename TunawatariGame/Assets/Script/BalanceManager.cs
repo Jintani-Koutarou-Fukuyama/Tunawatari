@@ -1,6 +1,8 @@
 using UnityEngine;
 using UnityEngine.Events;
 using System.Collections;
+using TMPro;
+using UnityEngine.UI;
 
 public class BalanceManager : MonoBehaviour
 {
@@ -10,6 +12,13 @@ public class BalanceManager : MonoBehaviour
     {
         Horizontal,
         Vertical
+    }
+
+    public enum BalancePlayMode
+    {
+        Normal,
+        SniperDefense,
+        MatrixAvoid
     }
 
     [System.Serializable]
@@ -57,22 +66,22 @@ public class BalanceManager : MonoBehaviour
     [SerializeField] private RectTransform balancePoint;
 
     [Header("Event Vertical Layout")]
-    // イベント中にゲージ全体を画面左端へ置くための設定です。
-    // Canvasの左中央に寄せたいので、anchor/pivotの初期値を左中央にしています。
+    // イベント中にBalanceGauge全体を画面左側へ置くための設定です。
+    // 横ゲージのサイズは変えず、親RectTransformを90度回転して縦表示にします。
     [SerializeField] private Vector2 eventVerticalAnchorMin = new Vector2(0f, 0.5f);
     [SerializeField] private Vector2 eventVerticalAnchorMax = new Vector2(0f, 0.5f);
-    [SerializeField] private Vector2 eventVerticalPivot = new Vector2(0f, 0.5f);
+    [SerializeField] private Vector2 eventVerticalPivot = new Vector2(0.5f, 0.5f);
     [SerializeField] private Vector2 eventVerticalAnchoredPosition = new Vector2(40f, 0f);
-    // 縦表示時のBalanceBarの大きさです。xが太さ、yが長さです。
-    [SerializeField] private Vector2 eventVerticalBarSize = new Vector2(28f, 240f);
-    // 縦表示時のTargetZoneの大きさです。xが幅、yが縦方向の判定範囲です。
-    [SerializeField] private Vector2 eventVerticalTargetZoneSize = new Vector2(44f, 50f);
-    // 縦表示時のBalancePointの大きさです。白い球を正方形で扱います。
-    [SerializeField] private Vector2 eventVerticalPointSize = new Vector2(28f, 28f);
+    [SerializeField] private float eventVerticalRotationZ = 90f;
     [SerializeField] private bool resetGaugePositionOnLayoutSwitch = true;
 
     [Header("Gauge Direction")]
     [SerializeField] private BalanceGaugeDirection gaugeDirection = BalanceGaugeDirection.Horizontal;
+
+    [Header("Mode")]
+    // 通常綱渡り、スナイパー防御、マトリックス回避のどれとして動かすかです。
+    // State遷移はSniperEventManager側で行い、BalanceManagerは表示・操作・判定だけを担当します。
+    [SerializeField] private BalancePlayMode playMode = BalancePlayMode.Normal;
 
     [Header("Balance Point")]
     [SerializeField] private float pointMoveSpeed = 10f;
@@ -84,6 +93,42 @@ public class BalanceManager : MonoBehaviour
     [Header("Target Zone")]
     [SerializeField] private float targetMoveSpeed = 0.5f;
     [SerializeField] private float targetMoveRangeRate = 0.85f;
+
+    [Header("Random Challenge")]
+    // trueにすると、黄色い目標範囲は動き続けず、ランダムな位置へ出る方式になります。
+    [SerializeField] private bool useRandomTargetChallenge = true;
+    // PlayerMarkerをTargetYellowAreaへ合わせる制限時間です。
+    [SerializeField] private float challengeTimeLimit = 3f;
+    // 成功したら次のランダム位置へ移動します。
+    [SerializeField] private bool randomizeTargetAfterSuccess = true;
+    // 失敗したら次のランダム位置へ移動します。
+    [SerializeField] private bool randomizeTargetAfterFailure = true;
+    // ランダム位置が現在のPlayerMarkerと重なりにくいようにする最小距離です。
+    [SerializeField] private float randomTargetMinDistanceFromPoint = 30f;
+    // UI Textを使っている場合の残り時間表示です。
+    [SerializeField] private Text balanceTimerText;
+    // TextMeshProを使っている場合の残り時間表示です。
+    [SerializeField] private TMP_Text balanceTimerTmpText;
+    // 残り時間表示の書式です。{0:0.0} に秒数が入ります。
+    [SerializeField] private string timerFormat = "{0:0.0}";
+
+    [Header("Sniper Defense Mode")]
+    // スナイパー防御中、白球と連動して上下させる棒Transformです。
+    [SerializeField] private Transform sniperDefenseStickTarget;
+    // 白球の位置を棒のローカルY移動へ変換する幅です。
+    [SerializeField] private float sniperDefenseStickMoveRange = 0.5f;
+    // スナイパー防御中に白球を下へ動かすキーです。
+    [SerializeField] private KeyCode sniperDefenseDownKey = KeyCode.DownArrow;
+    // スナイパー防御中に白球を上へ動かすキーです。
+    [SerializeField] private KeyCode sniperDefenseUpKey = KeyCode.UpArrow;
+
+    [Header("Matrix Avoid Mode")]
+    // マトリックス回避中、白球が自動で上昇する速さです。
+    [SerializeField] private float matrixPointRiseSpeed = 80f;
+    // マトリックス回避中、下入力で白球を押し戻す強さです。
+    [SerializeField] private float matrixDownPushSpeed = 140f;
+    // マトリックス回避中に白球を下へ押し戻すキーです。
+    [SerializeField] private KeyCode matrixDownKey = KeyCode.DownArrow;
 
     [Header("Failure")]
     [SerializeField] private float failTimeLimit = 1.5f;
@@ -124,8 +169,12 @@ public class BalanceManager : MonoBehaviour
     private float targetAxisPosition;
     private float targetMoveDirection = 1f;
     private float outsideTimer;
+    private float challengeTimer;
     private float wobbleTimer;
     private Quaternion wobbleBaseRotation;
+    private Vector3 sniperDefenseStickBaseLocalPosition;
+    private bool hasSniperDefenseStickBasePosition;
+    private bool isInsideTarget;
     private bool wasInsideTarget;
     private Coroutine unbalanceCoroutine;
     private float nextTimerLogTime;
@@ -135,17 +184,21 @@ public class BalanceManager : MonoBehaviour
     private RectTransformLayout savedTargetZoneLayout;
     private RectTransformLayout savedBalancePointLayout;
 
-    public bool IsInsideTarget { get; private set; }
     public float OutsideTimer => outsideTimer;
+    public float ChallengeRemainingTime => Mathf.Max(0f, challengeTimeLimit - challengeTimer);
     public BalanceGaugeDirection GaugeDirection => gaugeDirection;
+    public BalancePlayMode PlayMode => playMode;
 
     private void Start()
     {
+        AutoAssignBalanceUi();
+
         if (gaugeRoot == null && balanceBar != null)
         {
             gaugeRoot = balanceBar.parent as RectTransform;
         }
 
+        AutoAssignTimerText();
         SaveHorizontalLayoutIfNeeded();
 
         // UIの初期位置を現在のInspector配置から読み取ります。
@@ -157,22 +210,58 @@ public class BalanceManager : MonoBehaviour
             wobbleBaseRotation = wobbleTarget.localRotation;
         }
 
+        if (useRandomTargetChallenge)
+        {
+            RandomizeTargetZone();
+            challengeTimer = 0f;
+        }
+
         ApplyAllUiPositions();
         UpdateBalanceState();
-        wasInsideTarget = IsInsideTarget;
+        wasInsideTarget = isInsideTarget;
+        UpdateTimerText();
 
-        DebugLog($"Start: IsInsideTarget={IsInsideTarget}, animator={(animator != null ? animator.name : "null")}, failTimeLimit={failTimeLimit}");
+        DebugLog($"Start: IsInsideTarget={isInsideTarget}, animator={(animator != null ? animator.name : "null")}, failTimeLimit={failTimeLimit}");
         CheckAnimatorSetup();
     }
 
     private void Update()
     {
-        MoveTargetZone();
+        switch (playMode)
+        {
+            case BalancePlayMode.SniperDefense:
+                UpdateSniperDefenseMode();
+                break;
+            case BalancePlayMode.MatrixAvoid:
+                UpdateMatrixAvoidMode();
+                break;
+            default:
+                UpdateNormalMode();
+                break;
+        }
+
+        UpdateWobble();
+    }
+
+    private void UpdateNormalMode()
+    {
+        if (!useRandomTargetChallenge)
+        {
+            MoveTargetZone();
+        }
+
         MoveBalancePoint();
         ApplyAllUiPositions();
         UpdateBalanceState();
-        UpdateFailureTimer();
-        UpdateWobble();
+
+        if (useRandomTargetChallenge)
+        {
+            UpdateRandomChallenge();
+        }
+        else
+        {
+            UpdateFailureTimer();
+        }
     }
 
     // 外部イベントから横/縦を切り替えたい時に呼びます。
@@ -208,7 +297,7 @@ public class BalanceManager : MonoBehaviour
     {
         SaveHorizontalLayoutIfNeeded();
 
-        SetGaugeDirection(BalanceGaugeDirection.Vertical);
+        SetGaugeDirection(BalanceGaugeDirection.Horizontal);
         ApplyEventVerticalLayout();
 
         if (resetGaugePositionOnLayoutSwitch)
@@ -251,8 +340,100 @@ public class BalanceManager : MonoBehaviour
         targetAxisPosition = 0f;
         outsideTimer = 0f;
         targetMoveDirection = 1f;
+        challengeTimer = 0f;
+
+        if (useRandomTargetChallenge)
+        {
+            RandomizeTargetZone();
+        }
+
         ApplyAllUiPositions();
         UpdateBalanceState();
+        UpdateTimerText();
+    }
+
+    public void SetSniperTargetPosition(float normalizedPosition)
+    {
+        float t = Mathf.Clamp01(normalizedPosition);
+        targetAxisPosition = Mathf.Lerp(GetMinTargetPosition(), GetMaxTargetPosition(), t);
+        ApplyAllUiPositions();
+        UpdateBalanceState();
+        DebugLog($"Sniper target set. normalized={t:F2}, target={targetAxisPosition:F2}");
+    }
+
+    public void EnableSniperDefenseMode()
+    {
+        playMode = BalancePlayMode.SniperDefense;
+        outsideTimer = 0f;
+        challengeTimer = 0f;
+        SetGaugeDirection(BalanceGaugeDirection.Horizontal);
+        SaveSniperDefenseStickBasePosition();
+        ApplyAllUiPositions();
+        UpdateBalanceState();
+        UpdateSniperDefenseStickPosition();
+        DebugLog("SniperDefenseMode enabled.");
+    }
+
+    public void DisableSniperDefenseMode()
+    {
+        RestoreSniperDefenseStickPosition();
+
+        if (playMode == BalancePlayMode.SniperDefense)
+        {
+            playMode = BalancePlayMode.Normal;
+        }
+
+        outsideTimer = 0f;
+        DebugLog("SniperDefenseMode disabled.");
+    }
+
+    public void EnableMatrixAvoidMode()
+    {
+        playMode = BalancePlayMode.MatrixAvoid;
+        outsideTimer = 0f;
+        challengeTimer = 0f;
+        SetGaugeDirection(BalanceGaugeDirection.Horizontal);
+        targetAxisPosition = GetMinTargetPosition();
+        pointAxisPosition = targetAxisPosition;
+        ApplyAllUiPositions();
+        UpdateBalanceState();
+        DebugLog("MatrixAvoidMode enabled.");
+    }
+
+    public void DisableMatrixAvoidMode()
+    {
+        if (playMode == BalancePlayMode.MatrixAvoid)
+        {
+            playMode = BalancePlayMode.Normal;
+        }
+
+        outsideTimer = 0f;
+        DebugLog("MatrixAvoidMode disabled.");
+    }
+
+    public bool IsInsideTarget()
+    {
+        return isInsideTarget;
+    }
+
+    public bool ResolveSniperDefenseShot()
+    {
+        UpdateBalanceState();
+        bool success = isInsideTarget;
+
+        if (success)
+        {
+            onBalanceSuccess?.Invoke();
+        }
+        else
+        {
+            onBalanceMiss?.Invoke();
+            StartWobble();
+            PlayUnbalance();
+        }
+
+        DebugLog($"Sniper defense shot resolved. success={success}");
+        return success;
     }
 
     private void MoveBalancePoint()
@@ -281,6 +462,112 @@ public class BalanceManager : MonoBehaviour
         pointAxisPosition = Mathf.Clamp(pointAxisPosition, GetMinPointPosition(), GetMaxPointPosition());
     }
 
+    private void UpdateSniperDefenseMode()
+    {
+        float input = 0f;
+
+        if (Input.GetKey(sniperDefenseDownKey))
+        {
+            input -= 1f;
+        }
+
+        if (Input.GetKey(sniperDefenseUpKey))
+        {
+            input += 1f;
+        }
+
+        pointAxisPosition += input * pointMoveSpeed * Time.deltaTime;
+        pointAxisPosition = Mathf.Clamp(pointAxisPosition, GetMinPointPosition(), GetMaxPointPosition());
+
+        ApplyAllUiPositions();
+        UpdateBalanceState();
+        UpdateSniperDefenseStickPosition();
+    }
+
+    private void UpdateMatrixAvoidMode()
+    {
+        pointAxisPosition += matrixPointRiseSpeed * Time.deltaTime;
+
+        if (Input.GetKey(matrixDownKey))
+        {
+            pointAxisPosition -= matrixDownPushSpeed * Time.deltaTime;
+        }
+
+        pointAxisPosition = Mathf.Clamp(pointAxisPosition, GetMinPointPosition(), GetMaxPointPosition());
+
+        ApplyAllUiPositions();
+        UpdateBalanceState();
+
+        if (isInsideTarget)
+        {
+            outsideTimer = 0f;
+            return;
+        }
+
+        outsideTimer += Time.deltaTime;
+        LogOutsideTimer();
+
+        if (outsideTimer >= failTimeLimit)
+        {
+            DebugLog($"MatrixAvoidMode failed. outsideTimer={outsideTimer:F2}, limit={failTimeLimit:F2}");
+            outsideTimer = 0f;
+            StartWobble();
+            onBalanceMiss?.Invoke();
+            onDamage?.Invoke(damageAmount);
+            PlayUnbalance();
+        }
+    }
+
+    private void SaveSniperDefenseStickBasePosition()
+    {
+        if (sniperDefenseStickTarget == null || hasSniperDefenseStickBasePosition)
+        {
+            return;
+        }
+
+        sniperDefenseStickBaseLocalPosition = sniperDefenseStickTarget.localPosition;
+        hasSniperDefenseStickBasePosition = true;
+    }
+
+    private void UpdateSniperDefenseStickPosition()
+    {
+        if (sniperDefenseStickTarget == null)
+        {
+            return;
+        }
+
+        SaveSniperDefenseStickBasePosition();
+
+        float normalizedPoint = GetNormalizedPointPositionSigned();
+        Vector3 localPosition = sniperDefenseStickBaseLocalPosition;
+        localPosition.y += normalizedPoint * sniperDefenseStickMoveRange;
+        sniperDefenseStickTarget.localPosition = localPosition;
+    }
+
+    private void RestoreSniperDefenseStickPosition()
+    {
+        if (sniperDefenseStickTarget == null || !hasSniperDefenseStickBasePosition)
+        {
+            return;
+        }
+
+        sniperDefenseStickTarget.localPosition = sniperDefenseStickBaseLocalPosition;
+    }
+
+    private float GetNormalizedPointPositionSigned()
+    {
+        float min = GetMinPointPosition();
+        float max = GetMaxPointPosition();
+
+        if (Mathf.Approximately(min, max))
+        {
+            return 0f;
+        }
+
+        float normalized = Mathf.InverseLerp(min, max, pointAxisPosition);
+        return normalized * 2f - 1f;
+    }
+
     private void MoveTargetZone()
     {
         targetAxisPosition += targetMoveDirection * targetMoveSpeed * Time.deltaTime;
@@ -307,29 +594,29 @@ public class BalanceManager : MonoBehaviour
         float min = targetAxisPosition - targetHalfSize;
         float max = targetAxisPosition + targetHalfSize;
 
-        IsInsideTarget = pointAxisPosition >= min && pointAxisPosition <= max;
+        isInsideTarget = pointAxisPosition >= min && pointAxisPosition <= max;
 
         // 状態が変わった瞬間だけイベントを呼びます。
-        if (IsInsideTarget != wasInsideTarget)
+        if (isInsideTarget != wasInsideTarget)
         {
-            DebugLog($"Balance state changed: IsInsideTarget={IsInsideTarget}, point={pointAxisPosition:F2}, targetMin={min:F2}, targetMax={max:F2}, targetCenter={targetAxisPosition:F2}");
+            DebugLog($"Balance state changed: IsInsideTarget={isInsideTarget}, point={pointAxisPosition:F2}, targetMin={min:F2}, targetMax={max:F2}, targetCenter={targetAxisPosition:F2}");
 
-            if (IsInsideTarget)
+            if (playMode == BalancePlayMode.Normal && !useRandomTargetChallenge && isInsideTarget)
             {
                 onBalanceSuccess?.Invoke();
             }
-            else
+            else if (playMode == BalancePlayMode.Normal && !useRandomTargetChallenge)
             {
                 onBalanceMiss?.Invoke();
             }
 
-            wasInsideTarget = IsInsideTarget;
+            wasInsideTarget = isInsideTarget;
         }
     }
 
     private void UpdateFailureTimer()
     {
-        if (IsInsideTarget)
+        if (isInsideTarget)
         {
             if (outsideTimer > 0f)
             {
@@ -357,6 +644,166 @@ public class BalanceManager : MonoBehaviour
             {
                 DebugLog("BalancePoint reset to center after damage.");
                 pointAxisPosition = 0f;
+            }
+        }
+    }
+
+    private void UpdateRandomChallenge()
+    {
+        if (isInsideTarget)
+        {
+            HandleChallengeSuccess();
+            return;
+        }
+
+        challengeTimer += Time.deltaTime;
+        UpdateTimerText();
+
+        if (challengeTimer >= challengeTimeLimit)
+        {
+            HandleChallengeFailure();
+        }
+    }
+
+    private void HandleChallengeSuccess()
+    {
+        DebugLog($"Random challenge success. point={pointAxisPosition:F2}, target={targetAxisPosition:F2}");
+        onBalanceSuccess?.Invoke();
+        challengeTimer = 0f;
+
+        if (randomizeTargetAfterSuccess)
+        {
+            RandomizeTargetZone();
+        }
+
+        ApplyAllUiPositions();
+        UpdateBalanceState();
+        wasInsideTarget = isInsideTarget;
+        UpdateTimerText();
+    }
+
+    private void HandleChallengeFailure()
+    {
+        DebugLog($"Random challenge failed. challengeTimer={challengeTimer:F2}, limit={challengeTimeLimit:F2}");
+
+        challengeTimer = 0f;
+        outsideTimer = 0f;
+        StartWobble();
+        onBalanceMiss?.Invoke();
+        onDamage?.Invoke(damageAmount);
+        PlayUnbalance();
+
+        if (resetPointAfterDamage)
+        {
+            pointAxisPosition = 0f;
+        }
+
+        if (randomizeTargetAfterFailure)
+        {
+            RandomizeTargetZone();
+        }
+
+        ApplyAllUiPositions();
+        UpdateBalanceState();
+        wasInsideTarget = isInsideTarget;
+        UpdateTimerText();
+    }
+
+    private void RandomizeTargetZone()
+    {
+        float min = GetMinTargetPosition();
+        float max = GetMaxTargetPosition();
+
+        if (max < min)
+        {
+            targetAxisPosition = 0f;
+            return;
+        }
+
+        float newPosition = Random.Range(min, max);
+
+        for (int i = 0; i < 10; i++)
+        {
+            if (Mathf.Abs(newPosition - pointAxisPosition) >= randomTargetMinDistanceFromPoint)
+            {
+                break;
+            }
+
+            newPosition = Random.Range(min, max);
+        }
+
+        targetAxisPosition = newPosition;
+        DebugLog($"Target randomized. target={targetAxisPosition:F2}");
+    }
+
+    private void UpdateTimerText()
+    {
+        if (!useRandomTargetChallenge)
+        {
+            SetTimerText(string.Empty);
+            return;
+        }
+
+        string text = string.Format(timerFormat, ChallengeRemainingTime);
+        SetTimerText(text);
+    }
+
+    private void SetTimerText(string text)
+    {
+        if (balanceTimerText != null)
+        {
+            balanceTimerText.text = text;
+        }
+
+        if (balanceTimerTmpText != null)
+        {
+            balanceTimerTmpText.text = text;
+        }
+    }
+
+    private void AutoAssignTimerText()
+    {
+        if (balanceTimerText != null || balanceTimerTmpText != null)
+        {
+            return;
+        }
+
+        GameObject timerObject = GameObject.Find("BalanceTimerText");
+        if (timerObject == null)
+        {
+            return;
+        }
+
+        balanceTimerText = timerObject.GetComponent<Text>();
+        balanceTimerTmpText = timerObject.GetComponent<TMP_Text>();
+    }
+
+    private void AutoAssignBalanceUi()
+    {
+        if (targetZone == null)
+        {
+            GameObject targetObject = GameObject.Find("TargetYellowArea");
+            if (targetObject != null)
+            {
+                targetZone = targetObject.GetComponent<RectTransform>();
+            }
+        }
+
+        if (balancePoint == null)
+        {
+            GameObject markerObject = GameObject.Find("PlayerMarker");
+            if (markerObject != null)
+            {
+                balancePoint = markerObject.GetComponent<RectTransform>();
+            }
+        }
+
+        if (gaugeRoot == null)
+        {
+            GameObject gaugeObject = GameObject.Find("BalanceGauge");
+            if (gaugeObject != null)
+            {
+                gaugeRoot = gaugeObject.GetComponent<RectTransform>();
             }
         }
     }
@@ -511,25 +958,7 @@ public class BalanceManager : MonoBehaviour
             root.anchorMax = eventVerticalAnchorMax;
             root.pivot = eventVerticalPivot;
             root.anchoredPosition = eventVerticalAnchoredPosition;
-            root.localRotation = Quaternion.identity;
-        }
-
-        if (balanceBar != null)
-        {
-            balanceBar.sizeDelta = eventVerticalBarSize;
-            balanceBar.localRotation = Quaternion.identity;
-        }
-
-        if (targetZone != null)
-        {
-            targetZone.sizeDelta = eventVerticalTargetZoneSize;
-            SetCrossAxisAnchoredPosition(targetZone, 0f);
-        }
-
-        if (balancePoint != null)
-        {
-            balancePoint.sizeDelta = eventVerticalPointSize;
-            SetCrossAxisAnchoredPosition(balancePoint, 0f);
+            root.localRotation = Quaternion.Euler(0f, 0f, eventVerticalRotationZ);
         }
     }
 
@@ -698,7 +1127,7 @@ public class BalanceManager : MonoBehaviour
         }
 
         nextTimerLogTime = Time.time + timerLogInterval;
-        DebugLog($"outsideTimer={outsideTimer:F2}/{failTimeLimit:F2}, point={pointAxisPosition:F2}, target={targetAxisPosition:F2}, IsInsideTarget={IsInsideTarget}");
+        DebugLog($"outsideTimer={outsideTimer:F2}/{failTimeLimit:F2}, point={pointAxisPosition:F2}, target={targetAxisPosition:F2}, IsInsideTarget={isInsideTarget}");
     }
 
     private void DebugLog(string message)

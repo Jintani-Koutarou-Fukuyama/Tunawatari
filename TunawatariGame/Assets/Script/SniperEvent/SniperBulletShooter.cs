@@ -19,6 +19,9 @@ public class SniperBulletShooter : MonoBehaviour
     // ここを設定すると、レーザーのTargetPointより優先して全弾がこのTransformを狙います。
     // プレイヤーの胸や腰あたりに空オブジェクトを置いて入れると調整しやすいです。
     [SerializeField] private Transform aimTargetOverride;
+    // Defense中の黄色ゲージ位置を、これから発射する弾の高さに合わせるために使います。
+    // SniperEventManagerがDefense StateでBalanceManagerをSniperDefenseModeにしている時だけ動きます。
+    [SerializeField] private BalanceManager balanceManager;
 
     [Header("Shot Settings")]
     // 合計で何発撃つかです。今回の仕様では4発です。
@@ -131,6 +134,7 @@ public class SniperBulletShooter : MonoBehaviour
             Log($"Shot {shotIndex + 1}/{totalShots}. Laser = {laserIndex}");
             yield return Wait(preFireBlinkTime);
 
+            SetDefenseBalanceTargetForShot(laserIndex);
             FireBullet(laserIndex);
             onShotFired?.Invoke(laserIndex);
 
@@ -145,6 +149,77 @@ public class SniperBulletShooter : MonoBehaviour
         Log("Bullet sequence finished.");
         onSequenceFinished?.Invoke();
         fireCoroutine = null;
+    }
+
+    private void SetDefenseBalanceTargetForShot(int laserIndex)
+    {
+        if (balanceManager == null)
+        {
+            Log("Balance target sync skipped because balanceManager is not assigned.");
+            return;
+        }
+
+        if (balanceManager.PlayMode != BalanceManager.BalancePlayMode.SniperDefense)
+        {
+            Log($"Balance target sync skipped because BalanceManager mode is {balanceManager.PlayMode}.");
+            return;
+        }
+
+        float normalizedPosition = GetBalanceTargetPositionFromLaserHeight(laserIndex);
+        balanceManager.SetSniperTargetPosition(normalizedPosition);
+        Log($"Defense balance target set. laser={laserIndex}, normalized={normalizedPosition:F2}");
+    }
+
+    private float GetBalanceTargetPositionFromLaserHeight(int laserIndex)
+    {
+        int[] sortedLaserIndices = { 0, 1, 2, 3 };
+        float[] laserHeights = new float[4];
+
+        for (int i = 0; i < 4; i++)
+        {
+            laserHeights[i] = GetLaserShotHeight(i);
+        }
+
+        for (int i = 0; i < sortedLaserIndices.Length - 1; i++)
+        {
+            for (int j = i + 1; j < sortedLaserIndices.Length; j++)
+            {
+                int currentLaserIndex = sortedLaserIndices[i];
+                int nextLaserIndex = sortedLaserIndices[j];
+
+                if (laserHeights[currentLaserIndex] >= laserHeights[nextLaserIndex])
+                {
+                    continue;
+                }
+
+                sortedLaserIndices[i] = nextLaserIndex;
+                sortedLaserIndices[j] = currentLaserIndex;
+            }
+        }
+
+        float[] normalizedPositionsByRank = { 1f, 0.66f, 0.33f, 0f };
+
+        for (int rank = 0; rank < sortedLaserIndices.Length; rank++)
+        {
+            if (sortedLaserIndices[rank] != laserIndex)
+            {
+                continue;
+            }
+
+            return normalizedPositionsByRank[rank];
+        }
+
+        return 0.5f;
+    }
+
+    private float GetLaserShotHeight(int laserIndex)
+    {
+        Vector3 firePosition = laserController.GetFirePosition(laserIndex);
+        Vector3 targetPosition = aimTargetOverride != null
+            ? aimTargetOverride.position
+            : laserController.GetTargetPosition(laserIndex);
+
+        return (firePosition.y + targetPosition.y) * 0.5f;
     }
 
     private void FireBullet(int laserIndex)
@@ -184,6 +259,8 @@ public class SniperBulletShooter : MonoBehaviour
             minimumSpeedDistance,
             minimumSpeedMultiplier,
             speedMultiplierCurve);
+
+        bullet.SetDefenseArrivalCheck(balanceManager, GetDefenseArrivalTarget(laserIndex));
     }
 
     private Transform GetSlowMotionTarget(int laserIndex)
@@ -193,6 +270,16 @@ public class SniperBulletShooter : MonoBehaviour
             return slowMotionTargetOverride;
         }
 
+        if (aimTargetOverride != null)
+        {
+            return aimTargetOverride;
+        }
+
+        return laserController.GetTargetPoint(laserIndex);
+    }
+
+    private Transform GetDefenseArrivalTarget(int laserIndex)
+    {
         if (aimTargetOverride != null)
         {
             return aimTargetOverride;
