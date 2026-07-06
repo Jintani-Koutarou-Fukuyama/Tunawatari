@@ -6276,7 +6276,7 @@ MonoBehaviour:
   autoCreateLasers: 1
   hideOnAwake: 1
   laserColor: {r: 1, g: 0, b: 0, a: 0.9}
-  laserWidth: 0.035
+  laserWidth: 0.008
   laserMaterial: {fileID: 0}
   blinkEnabled: 1
   blinkSpeed: 8
@@ -14194,7 +14194,12 @@ MonoBehaviour:
   balanceTimerTmpText: {fileID: 0}
   timerFormat: '{0:0.0}'
   sniperDefenseStickTarget: {fileID: 1973266943}
-  sniperDefenseStickMoveRange: 0.5
+  sniperDefenseLeftHandTarget: {fileID: 1093592842}
+  sniperDefenseRightHandTarget: {fileID: 1899177744}
+  sniperDefenseStickMoveRange: 0.007
+  sniperDefenseStickMoveAxis: 2
+  sniperDefenseHandMoveAxis: 2
+  sniperDefenseHandMoveRange: -0.7
   sniperDefenseDownKey: 274
   sniperDefenseUpKey: 273
   matrixPointRiseSpeed: 80
@@ -15986,14 +15991,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   laserController: {fileID: 615380721}
-  bulletPrefab: {fileID: 2086261179823682334, guid: 1471e98bb0946d847a15230e4b8cb13c, type: 3}
+  bulletPrefab: {fileID: 1291275842709484017, guid: 5e97c044e24c8314cacc0098ddca8578, type: 3}
   aimTargetOverride: {fileID: 665179174}
   balanceManager: {fileID: 1311752719}
   totalShots: 4
-  bulletSpeed: 4
-  bulletLifeTime: 6
-  preFireBlinkTime: 1
-  intervalBetweenShots: 0.6
+  bulletSpeed: 6
+  bulletLifeTime: 12
+  preFireBlinkTime: 1.2
+  intervalBetweenShots: 1.5
   useUnscaledTime: 0
   enableBulletSlowMotion: 1
   slowMotionTargetOverride: {fileID: 0}
@@ -19175,7 +19180,7 @@ MonoBehaviour:
   warningDuration: 3
   paperDuration: 3
   sideViewDuration: 5
-  defenseDuration: 8
+  defenseDuration: 15
   stickBreakDuration: 2
   slowMotionDuration: 1
   matrixAvoidDuration: 5

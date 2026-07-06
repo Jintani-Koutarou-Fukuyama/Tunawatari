@@ -21,6 +21,13 @@ public class BalanceManager : MonoBehaviour
         MatrixAvoid
     }
 
+    public enum StickMoveAxis
+    {
+        X,
+        Y,
+        Z
+    }
+
     [System.Serializable]
     public class DamageEvent : UnityEvent<int>
     {
@@ -115,8 +122,21 @@ public class BalanceManager : MonoBehaviour
     [Header("Sniper Defense Mode")]
     // スナイパー防御中、白球と連動して上下させる棒Transformです。
     [SerializeField] private Transform sniperDefenseStickTarget;
+    // スナイパー防御中、棒と一緒に動かす左手IKターゲットです。
+    [SerializeField] private Transform sniperDefenseLeftHandTarget;
+    // スナイパー防御中、棒と一緒に動かす右手IKターゲットです。
+    [SerializeField] private Transform sniperDefenseRightHandTarget;
     // 白球の位置を棒のローカルY移動へ変換する幅です。
     [SerializeField] private float sniperDefenseStickMoveRange = 0.5f;
+    // 棒をどのローカル軸に沿って動かすかです。
+    // 棒モデルの向きによって「見た目の上下」がX/Y/Zのどれになるか変わるため、Inspectorで選べるようにします。
+    [SerializeField] private StickMoveAxis sniperDefenseStickMoveAxis = StickMoveAxis.Y;
+    // 左右のHandTargetをどのローカル軸に沿って動かすかです。
+    // 棒とHandTargetで向きが違う場合があるため、棒とは別に設定します。
+    [SerializeField] private StickMoveAxis sniperDefenseHandMoveAxis = StickMoveAxis.Y;
+    // 白球の位置を左右のHandTarget移動へ変換する幅です。
+    // 棒と手の動き量を別々に調整したい時に使います。
+    [SerializeField] private float sniperDefenseHandMoveRange = 0.5f;
     // スナイパー防御中に白球を下へ動かすキーです。
     [SerializeField] private KeyCode sniperDefenseDownKey = KeyCode.DownArrow;
     // スナイパー防御中に白球を上へ動かすキーです。
@@ -173,7 +193,11 @@ public class BalanceManager : MonoBehaviour
     private float wobbleTimer;
     private Quaternion wobbleBaseRotation;
     private Vector3 sniperDefenseStickBaseLocalPosition;
+    private Vector3 sniperDefenseLeftHandBaseLocalPosition;
+    private Vector3 sniperDefenseRightHandBaseLocalPosition;
     private bool hasSniperDefenseStickBasePosition;
+    private bool hasSniperDefenseLeftHandBasePosition;
+    private bool hasSniperDefenseRightHandBasePosition;
     private bool isInsideTarget;
     private bool wasInsideTarget;
     private Coroutine unbalanceCoroutine;
@@ -520,18 +544,30 @@ public class BalanceManager : MonoBehaviour
 
     private void SaveSniperDefenseStickBasePosition()
     {
-        if (sniperDefenseStickTarget == null || hasSniperDefenseStickBasePosition)
+        if (sniperDefenseStickTarget != null && !hasSniperDefenseStickBasePosition)
         {
-            return;
+            sniperDefenseStickBaseLocalPosition = sniperDefenseStickTarget.localPosition;
+            hasSniperDefenseStickBasePosition = true;
         }
 
-        sniperDefenseStickBaseLocalPosition = sniperDefenseStickTarget.localPosition;
-        hasSniperDefenseStickBasePosition = true;
+        if (sniperDefenseLeftHandTarget != null && !hasSniperDefenseLeftHandBasePosition)
+        {
+            sniperDefenseLeftHandBaseLocalPosition = sniperDefenseLeftHandTarget.localPosition;
+            hasSniperDefenseLeftHandBasePosition = true;
+        }
+
+        if (sniperDefenseRightHandTarget != null && !hasSniperDefenseRightHandBasePosition)
+        {
+            sniperDefenseRightHandBaseLocalPosition = sniperDefenseRightHandTarget.localPosition;
+            hasSniperDefenseRightHandBasePosition = true;
+        }
     }
 
     private void UpdateSniperDefenseStickPosition()
     {
-        if (sniperDefenseStickTarget == null)
+        if (sniperDefenseStickTarget == null &&
+            sniperDefenseLeftHandTarget == null &&
+            sniperDefenseRightHandTarget == null)
         {
             return;
         }
@@ -539,19 +575,77 @@ public class BalanceManager : MonoBehaviour
         SaveSniperDefenseStickBasePosition();
 
         float normalizedPoint = GetNormalizedPointPositionSigned();
-        Vector3 localPosition = sniperDefenseStickBaseLocalPosition;
-        localPosition.y += normalizedPoint * sniperDefenseStickMoveRange;
-        sniperDefenseStickTarget.localPosition = localPosition;
+        float stickMoveOffset = normalizedPoint * sniperDefenseStickMoveRange;
+        float handMoveOffset = normalizedPoint * sniperDefenseHandMoveRange;
+
+        ApplySniperDefenseMoveOffset(
+            sniperDefenseStickTarget,
+            sniperDefenseStickBaseLocalPosition,
+            hasSniperDefenseStickBasePosition,
+            sniperDefenseStickMoveAxis,
+            stickMoveOffset);
+
+        ApplySniperDefenseMoveOffset(
+            sniperDefenseLeftHandTarget,
+            sniperDefenseLeftHandBaseLocalPosition,
+            hasSniperDefenseLeftHandBasePosition,
+            sniperDefenseHandMoveAxis,
+            handMoveOffset);
+
+        ApplySniperDefenseMoveOffset(
+            sniperDefenseRightHandTarget,
+            sniperDefenseRightHandBaseLocalPosition,
+            hasSniperDefenseRightHandBasePosition,
+            sniperDefenseHandMoveAxis,
+            handMoveOffset);
     }
 
-    private void RestoreSniperDefenseStickPosition()
+    private void ApplySniperDefenseMoveOffset(
+        Transform target,
+        Vector3 baseLocalPosition,
+        bool hasBasePosition,
+        StickMoveAxis moveAxis,
+        float moveOffset)
     {
-        if (sniperDefenseStickTarget == null || !hasSniperDefenseStickBasePosition)
+        if (target == null || !hasBasePosition)
         {
             return;
         }
 
-        sniperDefenseStickTarget.localPosition = sniperDefenseStickBaseLocalPosition;
+        Vector3 localPosition = baseLocalPosition;
+
+        switch (moveAxis)
+        {
+            case StickMoveAxis.X:
+                localPosition.x += moveOffset;
+                break;
+            case StickMoveAxis.Y:
+                localPosition.y += moveOffset;
+                break;
+            case StickMoveAxis.Z:
+                localPosition.z += moveOffset;
+                break;
+        }
+
+        target.localPosition = localPosition;
+    }
+
+    private void RestoreSniperDefenseStickPosition()
+    {
+        if (sniperDefenseStickTarget != null && hasSniperDefenseStickBasePosition)
+        {
+            sniperDefenseStickTarget.localPosition = sniperDefenseStickBaseLocalPosition;
+        }
+
+        if (sniperDefenseLeftHandTarget != null && hasSniperDefenseLeftHandBasePosition)
+        {
+            sniperDefenseLeftHandTarget.localPosition = sniperDefenseLeftHandBaseLocalPosition;
+        }
+
+        if (sniperDefenseRightHandTarget != null && hasSniperDefenseRightHandBasePosition)
+        {
+            sniperDefenseRightHandTarget.localPosition = sniperDefenseRightHandBaseLocalPosition;
+        }
     }
 
     private float GetNormalizedPointPositionSigned()
